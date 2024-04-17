@@ -2,6 +2,7 @@
 #define CACHE_H
 
 #include <string>
+#include <sstream>
 
 #define CACHE_SIZE 10
 
@@ -9,6 +10,45 @@ class Cache {
 private:
   // TODO: private inner struct/class 선언 가능
   // TODO: private 멤버 변수와 함수 추가 가능
+  enum ListNodeType {
+    INT,
+    DOUBLE,
+  };
+
+  class ListNode {
+    private:
+    std::string _key;
+    int _intValue;
+    double _doubleValue;
+    ListNodeType _type;
+
+    public:
+    ListNode(std::string key, int value) 
+      : _key(key), _intValue(value), _type(ListNodeType::INT) {}
+    
+    ListNode(std::string key, double value) 
+      : _key(key), _doubleValue(value), _type(ListNodeType::DOUBLE) {}
+  
+    std::string getKey() {
+      return this->_key;
+    }
+
+    int getIntValue() {
+      return this->_intValue;
+    }
+
+    double getDoubleValue() {
+      return this->_doubleValue;
+    }
+
+    ListNodeType getType() {
+      return this->_type;
+    }
+
+    ListNode* next = NULL;
+  };
+
+  ListNode* head = NULL;
 
 public:
   Cache();
