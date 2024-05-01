@@ -5,6 +5,7 @@
 #include <sstream>
 
 #define CACHE_SIZE 10
+#define HASH_SIZE 5
 
 class Cache {
 private:
@@ -68,6 +69,15 @@ public:
   // 다음과 같이 표현된 문자열을 반환한다
   // [key1: value1] -> [key2: value2] -> ... -> [keyN: valueN]
   std::string toString();
+
+private:
+  void _addListNode(ListNode* node);
+
+  bool _isOverflow();
+
+  ListNode* _unlink(ListNode* target);
+
+  int hash(std::string key);
 };
 
 #endif
