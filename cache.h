@@ -11,25 +11,34 @@ class Cache {
 private:
   // TODO: private inner struct/class 선언 가능
   // TODO: private 멤버 변수와 함수 추가 가능
-  enum ListNodeType {
+  enum CacheType {
     INT,
     DOUBLE,
   };
 
-  class ListNode {
+  class CacheListNode {
     private:
     std::string _key;
     int _intValue;
     double _doubleValue;
-    ListNodeType _type;
+    CacheType _type;
 
     public:
-    ListNode(std::string key, int value) 
-      : _key(key), _intValue(value), _type(ListNodeType::INT) {}
+    CacheListNode* llink;
+    CacheListNode* rlink;
+
+    public:
+    CacheListNode() {
+      this->llink = this;
+      this->rlink = this;
+    }
+
+    CacheListNode(std::string key, int value) 
+      : _key(key), _intValue(value), _type(CacheType::INT) {}
     
-    ListNode(std::string key, double value) 
-      : _key(key), _doubleValue(value), _type(ListNodeType::DOUBLE) {}
-  
+    CacheListNode(std::string key, double value) 
+      : _key(key), _doubleValue(value), _type(CacheType::DOUBLE) {}
+
     std::string getKey() {
       return this->_key;
     }
@@ -42,14 +51,26 @@ private:
       return this->_doubleValue;
     }
 
-    ListNodeType getType() {
+    CacheType getType() {
       return this->_type;
     }
-
-    ListNode* next = NULL;
   };
 
-  ListNode* head = NULL;
+  class HashListNode {
+    public:
+    HashListNode() {
+      this->llink = this;
+      this->rlink = this;
+      this->value = NULL;
+    }
+
+    HashListNode* llink;
+    HashListNode* rlink;
+    Cache::CacheListNode* value;
+  };
+
+  CacheListNode* head = new CacheListNode();
+  HashListNode** hashMap;
 
 public:
   Cache();
@@ -71,11 +92,15 @@ public:
   std::string toString();
 
 private:
-  void _addListNode(ListNode* node);
+  void _addCacheListNode(CacheListNode* node);
 
-  bool _isOverflow();
+  void _addHashListNode(int hashId, CacheListNode* node);
 
-  ListNode* _unlink(ListNode* target);
+  bool _isCacheListNodeFull();
+
+  CacheListNode* _unlinkCacheListNode(CacheListNode* target);
+
+  HashListNode* _unlinkHashListNode(HashListNode* head, HashListNode* target);
 
   int hash(std::string key);
 };

@@ -12,10 +12,10 @@ double CachedRunner::multiply(std::string filename) {
     ++this->hitCount;
   } else {
     value = TaskRunner::multiply(filename);
+    this->_cache.add(filename, value);
     ++this->missCount;
   }
   
-  this->_cache.add(filename, value);
   return value;
 }
 
@@ -26,10 +26,10 @@ int CachedRunner::palindrome(std::string filename) {
     ++this->hitCount;
   } else {
     value = TaskRunner::palindrome(filename);
+    this->_cache.add(filename, value);
     ++this->missCount;
   }
-  
-  this->_cache.add(filename, value);
+
   return value;
 }
 

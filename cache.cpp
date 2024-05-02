@@ -4,44 +4,61 @@
 // TODO: 필요한 함수 구현
 
 Cache::Cache() {
-  this->head = NULL;
+  this->hashMap = new HashListNode*[HASH_SIZE];
+  for (int i = 0; i < HASH_SIZE; ++i) {
+    this->hashMap[i] = NULL;
+  }
 }
 
 void Cache::add(std::string key, int value) {
-  this->_addListNode(new ListNode(key, value));
+  this->_addCacheListNode(new CacheListNode(key, value));
 }
 
 void Cache::add(std::string key, double value) {
-  this->_addListNode(new ListNode(key, value));
+  this->_addCacheListNode(new CacheListNode(key, value));
 }
 
 bool Cache::get(std::string key, int &value) {
-  ListNode* node = this->head;
+  int hashId = this->hash(key);
+  HashListNode* head = this->hashMap[hashId];
+  if (head == NULL || (head->llink == head && head->rlink == head)) {
+    return false;
+  }
 
-  while (node != NULL) {
-    if (node->getKey() == key) {
-      value = node->getIntValue();
-      delete this->_unlink(node);
+  for (HashListNode* p = head->rlink; p != head; p = p->rlink) {
+    if (p->value->getKey() == key) {
+      value = p->value->getIntValue();
+
+      // 삭제 후 재등록하여 우선순위를 위로 올린다.
+      CacheListNode* link = p->value;
+      this->_unlinkCacheListNode(link);
+      this->_addCacheListNode(link);
 
       return true;
     }
-    node = node->next;
   }
 
   return false;
 }
 
 bool Cache::get(std::string key, double &value) {
-  ListNode* node = this->head;
+  int hashId = this->hash(key);
+  HashListNode* head = this->hashMap[hashId];
+  if (head == NULL || (head->llink == head && head->rlink == head)) {
+    return false;
+  }
 
-  while (node != NULL) {
-    if (node->getKey() == key) {
-      value = node->getDoubleValue();
-      delete this->_unlink(node);
+  for (HashListNode* p = head->rlink; p != head; p = p->rlink) {
+    if (p->value->getKey() == key) {
+      value = p->value->getDoubleValue();
+
+      // 삭제 후 재등록하여 우선순위를 위로 올린다.
+      CacheListNode* link = p->value;
+      this->_unlinkCacheListNode(link);
+      this->_addCacheListNode(link);
 
       return true;
     }
-    node = node->next;
   }
 
   return false;
@@ -49,91 +66,138 @@ bool Cache::get(std::string key, double &value) {
 
 std::string Cache::toString() {
   std::ostringstream stream;
-  ListNode* node = this->head;
-
-  while (node != NULL) {
+  for (CacheListNode* node = head->rlink; node != head; node = node->rlink) {
     stream << "[";
 
-    ListNodeType type = node->getType();
-    if (type == ListNodeType::INT) {
+    CacheType type = node->getType();
+    if (type == CacheType::INT) {
       stream << "palindrome(" << node->getKey() << "): ";
       stream << node->getIntValue();
     }
     
-    if (type == ListNodeType::DOUBLE) {
+    if (type == CacheType::DOUBLE) {
       stream << "multiply(" << node->getKey() << "): ";
       stream << node->getDoubleValue();
     }
 
     stream << "]";
 
-    if (node->next != NULL) {
+    if (node->rlink != head) {
       stream << " -> ";
     }
-    
-    node = node->next;
   }
 
   stream << std::endl;
   return stream.str();
 }
 
-void Cache::_addListNode(ListNode* node) {
-  if (this->head == NULL) {
-    this->head = node;
-  } else {
-    node->next = this->head;
-    this->head = node;
-  }
+void Cache::_addCacheListNode(CacheListNode* node) {
+  node->llink = head;
+  node->rlink = head->rlink;
+  head->rlink->llink = node;
+  head->rlink = node;
 
-  if (this->_isOverflow()) {
-    ListNode* node = this->head;
-    while (node->next != NULL) {
-      node = node->next;
-    }
+  // 해시맵에 등록
+  this->_addHashListNode(this->hash(node->getKey()), node);
 
-    // 리스트 갯수를 초과했다면, 값을 하나 삭제한다.
-    delete this->_unlink(node);
+  // 캐시 리스트가 꽉 찼다면 마지막 값 제거
+  if (this->_isCacheListNodeFull()) {
+    delete this->_unlinkCacheListNode(head->llink);
   }
 }
 
-bool Cache::_isOverflow() {
+void Cache::_addHashListNode(int hashId, CacheListNode* item) {
+  if (this->hashMap[hashId] == NULL) {
+    // 첫 추가라면 헤드 노드를 추가한다.
+    this->hashMap[hashId] = new HashListNode();
+  }
+
+  HashListNode* node = new HashListNode();
+  HashListNode* head = this->hashMap[hashId];
+  node->value = item;
+
+  node->llink = head;
+  node->rlink = head->rlink;
+  head->rlink->llink = node;
+  head->rlink = node;
+}
+
+bool Cache::_isCacheListNodeFull() {
+  if (head->llink == head && head->rlink == head) {
+    return 0;
+  }
+
   int size = 0;
-  for (ListNode* node = this->head; node != NULL; node = node->next) {
+  for (CacheListNode* p = head->rlink; p != head; p = p->rlink) {
     ++size;
   }
 
-  return size == CACHE_SIZE + 1;
+  return size > CACHE_SIZE;
 }
 
-Cache::ListNode* Cache::_unlink(ListNode* target) {
-  if (target == NULL || this->head == NULL) {
+Cache::CacheListNode* Cache::_unlinkCacheListNode(CacheListNode* target) {
+  if (target == head) {
     return NULL;
   }
 
-  if (target == this->head) {
-    this->head = this->head->next;
-    return target;
+  // 해시맵에서 삭제
+  HashListNode* head = this->hashMap[this->hash(target->getKey())];
+  if (head->llink == head && head->rlink == head) {
+    std::cout << "Fatal! hashMap already empty." << std::endl;
+  } else {
+    for (HashListNode* p = head->rlink; p != head; p = p->rlink) {
+      if (p->value == target) {
+        delete this->_unlinkHashListNode(head, p);
+        break;
+      }
+    }
   }
 
-  ListNode* before = this->head;
-  while (before->next != NULL && before->next != target) {
-    before = before->next;
-  }
-
-  if (before->next == NULL) {
-    return NULL;
-  }
-
-  before->next = target->next;
+  target->llink->rlink = target->rlink;
+  target->rlink->llink = target->llink;
   return target;
 }
 
+Cache::HashListNode* Cache::_unlinkHashListNode(HashListNode* head, HashListNode* target) {
+  if (target == head) {
+    return NULL;
+  }
+
+  target->llink->rlink = target->rlink;
+  target->rlink->llink = target->llink;
+  return target;
+}
+
+int Cache::hash(std::string key) {
+  int sum = 0;
+  for (int i = 0; i < key.length(); ++i) {
+    sum += key[i];
+  }
+
+  return sum % HASH_SIZE;
+}
+
 Cache::~Cache() {
-  ListNode* current = this->head;
-  while (current != NULL) {
-    ListNode* removed = current;
-    current = current->next;
-    delete removed;
+  CacheListNode* remove = NULL;
+  for (CacheListNode* p = this->head->rlink; p != head; p = p->rlink) {
+    if (remove != NULL) {
+      delete remove;
+    }
+    remove = p;
+  }
+  delete remove;
+
+  for (int i = 0; i < HASH_SIZE; ++i) {
+    HashListNode* head = this->hashMap[i];
+    if (head != NULL) {
+      HashListNode* remove = NULL;
+      for (HashListNode* p = head->rlink; p != head; p = p->rlink) {
+        if (remove != NULL) {
+          delete remove;
+        }
+        remove = p;
+      }
+    }
+    delete remove;
   }
 }
